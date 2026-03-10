@@ -37,6 +37,7 @@ An attacker might try to run a proposal before the timelock delay ends.
 
 **How we handlen it:**
 - Timelock strictly enforces the waiting period
+- A governor can use the cancel proposal function to cancel a proposal so it does'nt get executed
 - Execution only works after eta is reached
 
 ### Replay Attacks
