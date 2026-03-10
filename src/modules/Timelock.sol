@@ -3,33 +3,24 @@ pragma solidity ^0.8.24;
 
 import "src/interfaces/ITimelock.sol";
 
-abstract contract Timelock is ITimelock {
-
-    // contract  to que proposals in order to prevent immediate executions. how i understand is like not like a LIFO(Last in first out) but like a FCFS(First come first served)
-
+contract Timelock is ITimelock {
     uint256 public constant DELAY = 1 days;
 
     mapping(bytes32 => uint256) public queued;
 
-    function queueTxn(address target, bytes calldata data) external returns(uint256) {
+    function queue(address target, bytes calldata data) external returns (uint256) {
         bytes32 txId = keccak256(abi.encode(target, data));
         uint256 eta = block.timestamp + DELAY;
-        // uint256 eta = block.timestamp -/ DELAY;
         queued[txId] = eta;
-
         return eta;
     }
 
-    function executeTxn(address target, bytes calldata data) external {
-
-        // string memory  txId = keccak256(abi.encode(target, data));
+    function execute(address target, bytes calldata data) external {
         bytes32 txId = keccak256(abi.encode(target, data));
         uint256 eta = queued[txId];
-
+        require(eta != 0, "not queued");
         require(block.timestamp >= eta, "Timelock not ready");
-
-        delete queued[txId]; // we delete the executed tx from queue
-
+        delete queued[txId];
         (bool success,) = target.call(data);
         require(success, "Execution failed");
     }

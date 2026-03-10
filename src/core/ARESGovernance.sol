@@ -3,18 +3,17 @@ pragma solidity ^0.8.24;
 
 import "src/interfaces/IGovernance.sol";
 import "src/interfaces/ITimelock.sol";
+import "src/modules/GovGuard.sol";
+import "src/modules/GovMerkleAuth.sol";
 import "src/modules/Treasury.sol";
 
-abstract contract ARESGovernance is IGovernance, Treasury {
-    // Main contract vault that handles everything. I.E This contract manages protocol governance, allowing authorized governors to Create treasury proposals, Approve proposals, Queue them in a timelock,Execute them after delay. 
-
+contract ARESGovernance is IGovernance, Treasury, GovGuard, GovMerkleAuth {
+    // Main contract vault that handles everything. I.E This contract manages protocol governance, allowing authorized governors to Create treasury proposals, Approve proposals, Queue them in a timelock,Execute them after delay.
 
     event GovernorsAdded(uint time);
 
-    // initialize a variable to refrence the Timelock 
+    // initialize a variable to refrence the Timelock
     ITimelock public timelock;
-
-    mapping(address => bool) public governors;
 
     uint256 public proposalCount;
     uint256 public APPROVAL_THRESHOLD;
@@ -24,22 +23,17 @@ abstract contract ARESGovernance is IGovernance, Treasury {
 
     mapping(address => uint256) public rewards;
 
-    modifier onlyGovernor() {
-        require(governors[msg.sender], "Not governor");
-        _;
-    }
-    
-
-    //we pass doen the CA of this contract to the Treasury.
-    constructor(address _timelock, address[] memory _governors) Treasury(address(this)) {
+    //we pass doen the CA of this contract to the Treasury, pass root to GovMerkle,set timelock and set governors.
+    constructor(
+        address _timelock,
+        address[] memory _governors,
+        bytes32 _root
+    ) Treasury(address(this)) GovMerkleAuth(_root) {
         timelock = ITimelock(_timelock);
 
         APPROVAL_THRESHOLD = (_governors.length * 60 + 99) / 100;
 
-        for (uint i = 0; i < _governors.length; i++) {
-            if (_governors[i] == address(0)) revert("Address 0 not allowed");
-            governors[_governors[i]] = true;
-        }
+        _setGovernors(_governors);
 
         emit GovernorsAdded(block.timestamp);
     }
@@ -65,7 +59,6 @@ abstract contract ARESGovernance is IGovernance, Treasury {
 
         return proposalCount;
     }
-    
 
     //governor approves, just like in a multisig setting
     function approve(uint256 proposalId) external onlyGovernor {
@@ -80,7 +73,6 @@ abstract contract ARESGovernance is IGovernance, Treasury {
 
         rewards[msg.sender] += 1 ether;
     }
-    
 
     function queue(uint256 proposalId) external {
         Proposal storage p = proposals[proposalId];
@@ -96,11 +88,46 @@ abstract contract ARESGovernance is IGovernance, Treasury {
     function execute(uint256 proposalId) external {
         Proposal storage p = proposals[proposalId];
 
-        require(p.proposer != address(0), "Invalid proposal"); // improvement
+        require(p.proposer != address(0), "Invalid proposal");
         require(!p.executed, "Already executed");
 
         timelock.execute(p.target, p.data);
 
         p.executed = true;
+    }
+
+    // rewards claim
+    function claimReward(bytes32[] calldata proof) external {
+        require(!checkIfClaimed(msg.sender), "already claimed");
+        require(verify(msg.sender, proof), "invalid proof");
+        markClaimed(msg.sender);
+        rewards[msg.sender] += 1 ether;
+    }
+
+    function withdrawReward() external {
+        uint amount = rewards[msg.sender];
+        require(amount > 0, "no reward");
+        rewards[msg.sender] = 0;
+        //prevent reentrancy
+        transfer(msg.sender, amount);
+    }
+
+    // getter fn for proposal
+    function getProposal(
+        uint256 proposalId
+    )
+        external
+        view
+        returns (
+            address proposer,
+            address target,
+            bytes memory data,
+            uint256 approvals,
+            bool executed,
+            uint256 eta
+        )
+    {
+        Proposal storage p = proposals[proposalId];
+        return (p.proposer, p.target, p.data, p.approvals, p.executed, p.eta);
     }
 }

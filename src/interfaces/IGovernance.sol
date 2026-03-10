@@ -6,6 +6,7 @@ interface IGovernance {
     struct Proposal {
         address proposer;
         address target;
+        // addres to 
         bytes data;
         uint256 approvals;
         bool executed;

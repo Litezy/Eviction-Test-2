@@ -1,66 +1,65 @@
-## Foundry
+# ARES Governance Protocol
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+This document outlines the main features and workflow of the ARES governance system.
 
-Foundry consists of:
+## How It Works
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+### Proposal Creation
 
-## Documentation
+- Any authorized governor can create a proposal
+- You need to specify the target contract address and the calldata
+- Each proposal gets a unique ID and is stored on-chain
+- Only valid targets and non-empty calldata are accepted
 
-https://book.getfoundry.sh/
+### Approval Process
 
-## Usage
+- Governors review proposals and cast their approvals
+- Each governor's approval is recorded separately
+- The system calculates approval thresholds based on total governors
+- Governors earn 1 ether per approval they make
+- Rewards can be claimed later using Merkle verification
 
-### Build
+### Queueing
 
-```shell
-$ forge build
+- Once enough approvals are met, proposals go into the timelock
+- The timelock sets an eta (earliest time of execution)
+- This enforces a waiting period before anyone can run the proposal
+
+### Execution
+
+- After the waiting period passes, any governor can execute
+- The target contract gets called with the provided calldata
+- Once executed, the proposal status is marked to prevent replay
+
+### Cancellation
+
+- Governors can cancel proposals before execution
+- This helps fix errors or address security concerns
+- Canceled proposals cannot be queued or executed again
+
+### Claiming Rewards
+
+- Users in the Merkle tree can claim their rewards
+- A Merkle proof is required to verify eligibility
+- The system tracks who has claimed to prevent double-dipping
+- Invalid proofs will cause the transaction to revert
+
+## Flow Overview
+
+```
+Governor → createProposal → Proposal Created
+Governor(s) → approveProposal → Approval Count Goes Up
+Enough Approvals → queueProposal → Timelock Sets ETA
+Governor → executeProposal → Target Contract Called
+Governor(s) → cancelProposal (if needed)
+User → claimReward → Merkle Proof Verified → Reward Claimed
 ```
 
-### Test
+## Quick Summary
 
-```shell
-$ forge test
-```
+This governance system lets multiple governors work together to manage treasury funds safely. Proposals need multiple approvals, a timelock wait period, and then can be executed. Rewards are distributed through a Merkle-based system to keep things efficient.
 
-### Format
+---
 
-```shell
-$ forge fmt
-```
+*For more details on the system design, check out ARCHITECTURE.md*
 
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
