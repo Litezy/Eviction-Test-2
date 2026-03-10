@@ -1,0 +1,16 @@
+Design and implement a secure treasury execution system that allows protocol governance to:
+Propose treasury transactions
+Delay execution
+Verify authorization
+Distribute funds to contributors
+Prevent governance attacks
+Your implementation must include at least four independent modules.
+
+
+summary
+Create propsal, then
+Cryptographic Approval, then
+Timelock Queue, and then
+Execution
+PLUS a reward distribution system for thousands of users.
+
