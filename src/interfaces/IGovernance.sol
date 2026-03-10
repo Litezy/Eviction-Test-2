@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 interface IGovernance {
-
+   event ProposalCanceled(uint256 proposalId, address canceledBy);
     struct Proposal {
         address proposer;
         address target;

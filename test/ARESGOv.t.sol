@@ -129,4 +129,12 @@ contract GovernanceTest is Test {
         vm.expectRevert("Timelock not ready");
         gov.execute(pid);
     }
+
+
+    function testCancelProposal() public {
+    uint256 pid = _propose();
+    gov.cancelProposal(pid);
+    (,,,, bool executed,) = gov.getProposal(pid);
+    assertTrue(executed);
+}
 }

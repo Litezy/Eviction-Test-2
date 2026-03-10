@@ -112,6 +112,16 @@ contract ARESGovernance is IGovernance, Treasury, GovGuard, GovMerkleAuth {
         transfer(msg.sender, amount);
     }
 
+
+    //cancel proposal
+    function cancelProposal(uint256 proposalId) external onlyGovernor {
+    Proposal storage p = proposals[proposalId];
+    require(!p.executed, "Already executed");
+    require(p.proposer != address(0), "Invalid proposal");
+    p.executed = true; // we set this to true so as to prevent reexecution.
+    emit ProposalCanceled(proposalId, msg.sender);
+}
+
     // getter fn for proposal
     function getProposal(
         uint256 proposalId

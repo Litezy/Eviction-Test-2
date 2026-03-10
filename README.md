@@ -33,7 +33,7 @@ This document outlines the main features and workflow of the ARES governance sys
 
 ### Cancellation
 
-- Governors can cancel proposals before execution
+- Governors can cancel proposals before execution,but in my design I actually toggled executed to be true in order to prevent reecxeution.
 - This helps fix errors or address security concerns
 - Canceled proposals cannot be queued or executed again
 
