@@ -11,7 +11,7 @@ This document outlines the main features and workflow of the ARES governance sys
 - Each proposal gets a unique ID and is stored on-chain
 - Only valid targets and non-empty calldata are accepted
 
-  ### Off-Chain Signature Approval
+### Off-Chain Signature Approval
 
 - Governors can also approve proposals by signing off-chain using EIP-712 structured data
 - The signed approval can be submitted by anyone using `approveBySig`
