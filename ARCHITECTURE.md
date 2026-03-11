@@ -26,6 +26,22 @@ The core contract runs the show. It:
 - Keeps track of governor rewards
 - Integrates Merkle verification for reward claims
 
+### GovSigAuth Module
+
+This module handles off-chain signature approvals:
+
+- Tracks per-governor nonces to prevent replay
+- Governors sign approvals off-chain and submit via approveBySig
+- Nonce increments after every valid signature, invalidating reuse
+
+### SigLib Library
+
+Handles all EIP-712 cryptographic operations:
+
+- Builds domain separator with chainId and contract address to prevent cross-chain replay
+- Computes struct hash from proposalId, signer address and nonce
+- Recovers signer address with malleability protection (rejects high-s and invalid v values)
+
 ### Treasury Module
 
 The treasury handles all fund-related stuff:
@@ -80,6 +96,8 @@ A few things to keep in mind:
 - The timelock is trusted to enforce delays correctly
 - The Merkle root used at deployment needs to be correct
 
+- Signature scheme binds approvals to a specific chain and contract address, so a signature valid on testnet cannot be reused on mainnet
+- Nonces are per-governor, meaning a stolen signature becomes useless after the governor's nonce moves forward
 
 # Security Analysis
 

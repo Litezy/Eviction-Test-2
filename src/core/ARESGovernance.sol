@@ -6,8 +6,16 @@ import "src/interfaces/ITimelock.sol";
 import "src/modules/GovGuard.sol";
 import "src/modules/GovMerkleAuth.sol";
 import "src/modules/Treasury.sol";
+import "src/libraries/SigLib.sol";
+import "src/modules/GovSigAuth.sol";
 
-contract ARESGovernance is IGovernance, Treasury, GovGuard, GovMerkleAuth {
+contract ARESGovernance is
+    IGovernance,
+    Treasury,
+    GovGuard,
+    GovMerkleAuth,
+    GovSigAuth
+{
     // Main contract vault that handles everything. I.E This contract manages protocol governance, allowing authorized governors to Create treasury proposals, Approve proposals, Queue them in a timelock,Execute them after delay.
 
     event GovernorsAdded(uint time);
@@ -60,18 +68,40 @@ contract ARESGovernance is IGovernance, Treasury, GovGuard, GovMerkleAuth {
         return proposalCount;
     }
 
-    //governor approves, just like in a multisig setting
+    //approve proposal
     function approve(uint256 proposalId) external onlyGovernor {
         Proposal storage p = proposals[proposalId];
-
         require(p.proposer != address(0), "Invalid proposal");
         require(!approved[proposalId][msg.sender], "Already approved");
-
         approved[proposalId][msg.sender] = true;
-
         p.approvals++;
-
         rewards[msg.sender] += 1 ether;
+    }
+
+    //approve by sig
+    function approveBySig(
+        uint256 proposalId,
+        address signer,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external {
+        bytes32 domainSep = SigLib.domainSeparator(address(this));
+        bytes32 structHash = SigLib.hashApproval(
+            proposalId,
+            signer,
+            nonces[signer]
+        );
+        address recovered = SigLib.recover(domainSep, structHash, v, r, s);
+
+        require(recovered == signer, "sig mismatch");
+        require(governors[recovered], "not governor");
+        require(!approved[proposalId][recovered], "Already approved");
+
+        nonces[recovered]++;
+        approved[proposalId][recovered] = true;
+        proposals[proposalId].approvals++;
+        rewards[recovered] += 1 ether;
     }
 
     function queue(uint256 proposalId) external {
@@ -96,8 +126,8 @@ contract ARESGovernance is IGovernance, Treasury, GovGuard, GovMerkleAuth {
         p.executed = true;
     }
 
-    // rewards claim
-    function claimReward(bytes32[] calldata proof) external {
+    // check if eligible
+    function checkEligibility(bytes32[] calldata proof) external {
         require(!checkIfClaimed(msg.sender), "already claimed");
         require(verify(msg.sender, proof), "invalid proof");
         markClaimed(msg.sender);
@@ -112,15 +142,14 @@ contract ARESGovernance is IGovernance, Treasury, GovGuard, GovMerkleAuth {
         transfer(msg.sender, amount);
     }
 
-
     //cancel proposal
     function cancelProposal(uint256 proposalId) external onlyGovernor {
-    Proposal storage p = proposals[proposalId];
-    require(!p.executed, "Already executed");
-    require(p.proposer != address(0), "Invalid proposal");
-    p.executed = true; // we set this to true so as to prevent reexecution.
-    emit ProposalCanceled(proposalId, msg.sender);
-}
+        Proposal storage p = proposals[proposalId];
+        require(!p.executed, "Already executed");
+        require(p.proposer != address(0), "Invalid proposal");
+        p.executed = true; // we set this to true so as to prevent reexecution.
+        emit ProposalCanceled(proposalId, msg.sender);
+    }
 
     // getter fn for proposal
     function getProposal(

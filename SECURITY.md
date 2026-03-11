@@ -48,6 +48,13 @@ A single compromised governor should not be able to push a proposal through alon
 
 ---
 
+### 8. Signature Replay and Cross-Chain Replay
+
+A governor's off-chain approval signature could be captured and resubmitted by anyone to push a proposal through without the governor's current consent.
+
+I prevent this in SigLib and GovSigAuth. Each governor has a nonce that is embedded into the EIP-712 struct hash before signing. Once a signature is submitted, the nonce increments immediately, making the same signature produce a wrong recovered address on any future call. The domain separator also includes block.chainid and the contract address, so a signature from a testnet deployment cannot be replayed on mainnet or on a different contract. High-s values and invalid v values are rejected in SigLib.recover() to close the malleability vector where two different signatures can be valid for the same message.
+
+
 ## Remaining Risks
 
 **Root update mechanism is missing.** The Merkle root is set once at deployment and never updated. If new contributors need to be added to the reward set, there is currently no way to do that without redeploying the contract.
@@ -57,5 +64,7 @@ A single compromised governor should not be able to push a proposal through alon
 **The timelock target call is unconstrained.** When `executeTxn` runs, it calls any target with any calldata. There is no allowlist of safe targets, which means a successful malicious proposal could call anything — including self-destruct on dependent contracts.
 
 **No ETH balance check before reward payout.** If the contract runs out of ETH, `withdrawReward()` will fail silently or revert without a clear message, leaving users confused about whether their claim was lost.
+
+**approveBySig has no deadline.** A signed approval has no expiry timestamp. If a governor signs an approval and later changes their mind, they cannot invalidate the signature unless they submit a different transaction to burn their nonce first.
 
 These are known gaps that a production deployment would need to address before going live with real funds.

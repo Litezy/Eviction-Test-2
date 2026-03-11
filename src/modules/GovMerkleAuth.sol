@@ -13,10 +13,7 @@ contract GovMerkleAuth {
         root = _root;
     }
 
-    function verify(
-        address user,
-        bytes32[] calldata proof
-    ) public view returns (bool) {
+    function verify(address user,bytes32[] calldata proof) public view returns (bool) {
 
         return GovMerkle.verify(
             proof,

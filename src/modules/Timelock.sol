@@ -5,6 +5,8 @@ import "src/interfaces/ITimelock.sol";
 
 contract Timelock is ITimelock {
     uint256 public constant DELAY = 1 days;
+    event Queued(bytes32 _txnID, uint _timeQueued);
+    event Executed(address _target, uint _time);
 
     mapping(bytes32 => uint256) public queued;
 
@@ -12,6 +14,7 @@ contract Timelock is ITimelock {
         bytes32 txId = keccak256(abi.encode(target, data));
         uint256 eta = block.timestamp + DELAY;
         queued[txId] = eta;
+        emit Queued(txId,block.timestamp);
         return eta;
     }
 
@@ -23,5 +26,6 @@ contract Timelock is ITimelock {
         delete queued[txId];
         (bool success,) = target.call(data);
         require(success, "Execution failed");
+        emit Executed( target,block.timestamp);
     }
 }
