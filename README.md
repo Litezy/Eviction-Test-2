@@ -11,6 +11,15 @@ This document outlines the main features and workflow of the ARES governance sys
 - Each proposal gets a unique ID and is stored on-chain
 - Only valid targets and non-empty calldata are accepted
 
+  ### Off-Chain Signature Approval
+
+- Governors can also approve proposals by signing off-chain using EIP-712 structured data
+- The signed approval can be submitted by anyone using `approveBySig`
+- Each governor has a nonce that increments after every valid signature, preventing replay
+- The domain separator binds signatures to a specific chain and contract address, blocking cross-chain reuse
+- High-s values and invalid v values are rejected to prevent signature malleability
+- This allows governors to approve without paying gas themselves
+
 ### Approval Process
 
 - Governors review proposals and cast their approvals
@@ -48,10 +57,10 @@ This document outlines the main features and workflow of the ARES governance sys
 
 ```
 Governor → createProposal → Proposal Created
-Governor(s) → approveProposal → Approval Count Goes Up
+Governor(s) → approve (on-chain) OR approveBySig (off-chain) → Approval Count Goes Up
 Enough Approvals → queueProposal → Timelock Sets ETA
-Governor → executeProposal → Target Contract Called
-Governor(s) → cancelProposal (if needed)
+Wait Period Passes → executeProposal → Target Contract Called
+Governor(s) → cancelProposal (if needed) → Proposal Permanently Blocked
 User → claimReward → Merkle Proof Verified → Reward Claimed
 ```
 
